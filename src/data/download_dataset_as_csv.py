@@ -9,59 +9,68 @@ DATASET_LINKS = {
     "dominica-bermant": "https://pmc.ncbi.nlm.nih.gov/articles/instance/6715799/bin/41598_2019_48909_MOESM2_ESM.xlsx",
     "etp-bermant": "https://pmc.ncbi.nlm.nih.gov/articles/instance/6715799/bin/41598_2019_48909_MOESM3_ESM.xlsx",
     "dominica-sharma": "https://raw.githubusercontent.com/pratyushasharma/sw-combinatoriality/refs/heads/main/data/DominicaCodas.csv",
-    "sperm-whale-dialogues-sharma": "https://raw.githubusercontent.com/pratyushasharma/sw-combinatoriality/refs/heads/main/data/sperm-whale-dialogues.csv"
+    "sperm-whale-dialogues-sharma": "https://raw.githubusercontent.com/pratyushasharma/sw-combinatoriality/refs/heads/main/data/sperm-whale-dialogues.csv",
 }
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36"
 }
 
-DATA_FOLDER = './data/'
+DATA_FOLDER = "./data"
 
-def download_file(dataset_name):
-    # Check if the dataset name is in the dictionary
-    if dataset_name not in DATASET_LINKS:
-        print(f"Error: '{dataset_name}' not found in the available datasets.")
-        print("Available datasets:")
-        for name in DATASET_LINKS:
-            print(f"  - {name}")
-        return
-    
+# Ensure data folder exists
+os.makedirs(DATA_FOLDER, exist_ok=True)
+
+
+def download_and_save_file(dataset_name):
+    """Downloads and saves the specified dataset as a CSV file."""
     url = DATASET_LINKS[dataset_name]
-    filename = f'{DATA_FOLDER}/{dataset_name}.csv'  # Ensure filename ends with .csv
-    
-    print(f"Starting download for '{dataset_name}' from {url}...")
+    filename = os.path.join(DATA_FOLDER, f"{dataset_name}.csv")
+
+    print(f"Downloading '{dataset_name}' from {url}...")
     try:
         response = requests.get(url, headers=HEADERS)
-        response.raise_for_status()  # Raise an error for bad HTTP status codes
+        response.raise_for_status()
 
-        # Check if the file is an XLSX by extension
-        if url.endswith('.xlsx'):
-            # Convert the content to CSV using pandas
-            xlsx_data = BytesIO(response.content)
-            df = pd.read_excel(xlsx_data)
+        # Convert to CSV if file is an XLSX, otherwise save directly
+        if url.endswith(".xlsx"):
+            df = pd.read_excel(BytesIO(response.content))
             df.to_csv(filename, index=False)
-            print(f"Converted and saved '{filename}' as CSV.")
+            print(f"'{dataset_name}' downloaded and saved as CSV.")
         else:
-            # Save as CSV directly
-            with open(filename, 'wb') as f:
+            with open(filename, "wb") as f:
                 f.write(response.content)
-            print(f"'{filename}' downloaded as CSV.")
-            
+            print(f"'{dataset_name}' downloaded and saved as CSV.")
+
     except requests.RequestException as e:
         print(f"Failed to download '{dataset_name}': {e}")
 
+
+def download_all_datasets():
+    """Downloads all datasets listed in DATASET_LINKS."""
+    for dataset_name in DATASET_LINKS:
+        download_and_save_file(dataset_name)
+
+
 def main():
-    # Set up argument parsing
     parser = argparse.ArgumentParser(description="Download datasets by name.")
-    parser.add_argument("--dataset_name", type=str, default=None, help="Name of the dataset to download. By default downloads all datasets.")
+    parser.add_argument(
+        "--dataset_name",
+        type=str,
+        help="Name of the dataset to download. If omitted, all datasets are downloaded.",
+    )
     args = parser.parse_args()
-    
-    if args.dataset_name is not None:
-        download_file(args.dataset_name)
+
+    if args.dataset_name:
+        if args.dataset_name in DATASET_LINKS:
+            download_and_save_file(args.dataset_name)
+        else:
+            print(f"Error: '{args.dataset_name}' not found. Available datasets:")
+            for name in DATASET_LINKS:
+                print(f"  - {name}")
     else:
-        for name in DATASET_LINKS:
-            download_file(name)
+        download_all_datasets()
+
 
 if __name__ == "__main__":
     main()
